@@ -1,11 +1,11 @@
 {
   "name": "playcanvas-typescript-template",
   "version": "0.0.0",
-  "description": "It is a template for PlayCanvas projects with TypeScript support.",
-  "main": "index.js",
+  "description": "PlayCanvas: UI Blur example",
+  "main": "build/blur.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "webpack --mode=production --node-env=production",
+    "build": "webpack --mode=p  roduction --node-env=production",
     "build:dev": "webpack --mode=development",
     "build:prod": "webpack --mode=production --node-env=production",
     "watch": "webpack --watch --mode=production --node-env=production",
