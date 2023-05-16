@@ -44,8 +44,6 @@ export class BlurController {
 
     blur.retain();
 
-    console.log('blur', blur, this.confToBlur, this.freeBlur);
-
     return blur;
   }
 

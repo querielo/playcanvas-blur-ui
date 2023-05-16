@@ -195,8 +195,4 @@ export class Blur extends RefCounter {
       renderTarget.destroy();
     }
   }
-
-  //   public retain() {
-
-  //   }
 }
