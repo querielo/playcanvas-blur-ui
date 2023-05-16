@@ -4,6 +4,8 @@ The repository provides the `blurImageElement` script type. It provides a way to
 
 Playcanvas project: https://playcanvas.com/project/1075000/overview/blur-ui
 
+<img width="800" alt="Blur UI" src="https://github.com/querielo/playcanvas-blur-ui/assets/104348270/f9a16597-2957-4a56-8553-4109e499e2bb">
+
 The repo is based on the [Playcanvas TypeScript Template](https://github.com/querielo/playcanvas-typescript-template). I highly recommend you to check it out. Read more about building Playcanvas Blur UI in the Playcanvas TypeScript Template.
 
 ## Setup
@@ -25,3 +27,5 @@ The repo contains the next Typescript ScriptComponents for Playcanvas:
         * camera - camera entity that will be used to render the scene for blurring
         * iterations - number of blur iterations. Keep it as low as possible to save performance.
         * radiusFactor - blur radius factor. Keep it as low as possible to have better blur quality.
+
+<img width="1067" alt="Screenshot 2023-05-16 at 22 47 51" src="https://github.com/querielo/playcanvas-blur-ui/assets/104348270/18a16558-1a97-4e66-bdba-a9947d46af14">
