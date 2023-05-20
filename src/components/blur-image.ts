@@ -1,6 +1,6 @@
 import { createScript } from '../utils/createScript';
 import { BlurController } from '../utils/blur/blur-controller';
-import { Blur } from '../utils/blur/blur';
+import { Blur, RESIZE_EVENT } from '../utils/blur/blur';
 import { Camera } from '../utils/blur/types';
 
 @createScript({
@@ -18,11 +18,11 @@ Higher number means better quality but worse performance. Keep it low on mobile 
     type: 'number',
     default: 1,
     min: 0,
-    max: 5,
+    max: 10,
     description: `Blur radius factor. Higher number means more blur.`,
   },
 })
-class BlurImageElement extends pc.ScriptType {
+export class BlurImageElement extends pc.ScriptType {
   public camera?: Camera;
   public iterations = 8;
   public radiusFactor = 1;
@@ -40,8 +40,12 @@ class BlurImageElement extends pc.ScriptType {
 
       const blurController = BlurController.getInstance();
 
+      this.blur?.off('resize', this.update);
+
       blurController.release(this.camera, oldValue, this.radiusFactor);
       this.blur = blurController.retain(this.camera, value, this.radiusFactor);
+
+      this.blur.on('resize', this.update);
     });
 
     this.on('attr:radiusFactor', (value: number, oldValue: number) => {
@@ -51,8 +55,12 @@ class BlurImageElement extends pc.ScriptType {
 
       const blurController = BlurController.getInstance();
 
+      this.blur?.off(RESIZE_EVENT, this.update);
+
       blurController.release(this.camera, this.iterations, oldValue);
       this.blur = blurController.retain(this.camera, this.iterations, value);
+
+      this.blur.on('resize', this.update);
     });
 
     if (camera) {
@@ -63,6 +71,8 @@ class BlurImageElement extends pc.ScriptType {
         this.iterations,
         this.radiusFactor
       );
+
+      this.blur.on('resize', this.update);
     }
   }
 
@@ -75,8 +85,6 @@ class BlurImageElement extends pc.ScriptType {
       if (!this.blur) {
         return;
       }
-
-      this.blur.render();
 
       const blurTexture = this.blur.getBlurTexture();
 

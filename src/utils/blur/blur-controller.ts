@@ -30,10 +30,7 @@ export class BlurController {
 
         blur = freeBlur;
       } else {
-        const app = camera.system.app;
-        const device = app.graphicsDevice;
-
-        blur = new Blur(device, cameraEntity);
+        blur = new Blur(cameraEntity);
       }
     }
 

@@ -31,7 +31,7 @@ The repo contains the next Typescript ScriptComponents for Playcanvas:
 
 **NOTE:**
 * Use as little as possible `blurImageElement` with different **camera**/**iterations**/**radiusFactor**. It is GPU consuming.
-* It is cheap to have many `blurImageElement` with the same **camera**/**iterations**/**radiusFactor**.
+* It is relatively cheap to have many `blurImageElement` with the same **camera**/**iterations**/**radiusFactor**.
 
 <img width="1067" alt="Playcanvas Editor example" src="https://github.com/querielo/playcanvas-blur-ui/assets/104348270/18a16558-1a97-4e66-bdba-a9947d46af14">
 

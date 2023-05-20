@@ -1,4 +1,4 @@
-import { RefCounter } from './ref-counter';
+import { RefCountable } from './ref-counter';
 import { Camera } from './types';
 
 const FRAGMENT_SHADER = `
@@ -7,34 +7,41 @@ uniform sampler2D uTexture;
 uniform vec2 uPixelSize;
 uniform vec2 uDirection;
 
+uniform float uAlpha;
+
 varying vec2 vUv0;
 
 void main() {
-    vec4 sum = vec4( .0 );
+  vec4 sum = vec4( .0 );
 
-    vec2 uv = vUv0;
-    vec2 direction = uDirection * uPixelSize;
+  vec2 uv = vUv0;
+  vec2 direction = uDirection * uPixelSize;
 
-    vec4 color = vec4(.0);
-    vec2 off1 = vec2(1.3846153846) * direction;
-    vec2 off2 = vec2(3.2307692308) * direction;
-    color += texture2D(uTexture, uv) * .2270270270;
-    color += texture2D(uTexture, uv + off1) * .3162162162;
-    color += texture2D(uTexture, uv - off1) * .3162162162;
-    color += texture2D(uTexture, uv + off2) * .0702702703;
-    color += texture2D(uTexture, uv - off2) * .0702702703;
+  vec4 color = vec4(.0);
+  vec2 off1 = vec2(1.3846153846) * direction;
+  vec2 off2 = vec2(3.2307692308) * direction;
+  color += texture2D(uTexture, uv) * .2270270270;
+  color += texture2D(uTexture, uv + off1) * .3162162162;
+  color += texture2D(uTexture, uv - off1) * .3162162162;
+  color += texture2D(uTexture, uv + off2) * .0702702703;
+  color += texture2D(uTexture, uv - off2) * .0702702703;
 
-    gl_FragColor = color;
+  gl_FragColor = vec4(color.xyz, uAlpha);
 }
 `;
 
-export class Blur extends RefCounter {
+export const RESIZE_EVENT = 'resize';
+
+export class Blur extends RefCountable(pc.EventHandler) {
+  private readonly app: pc.AppBase;
   private readonly device: pc.GraphicsDevice;
 
   private readonly cameraEntity: Camera;
 
   private readonly firstBlurShader: pc.Shader;
   private readonly loopBlurShader: pc.Shader;
+
+  private readonly blankTexture: pc.Texture;
 
   private blurRenderTargets: pc.RenderTarget[] = [];
 
@@ -43,17 +50,34 @@ export class Blur extends RefCounter {
   private iterations = 10;
   private factor = 3;
 
-  constructor(device: pc.GraphicsDevice, camera: Camera) {
+  constructor(camera: Camera) {
     super();
 
-    this.device = device;
+    const cameraComponent = camera.camera;
+
+    this.app = cameraComponent.system.app;
+
+    this.device = this.app.graphicsDevice;
 
     this.cameraEntity = camera;
 
-    this.cameraEntity.camera.requestSceneColorMap(true);
+    cameraComponent.requestSceneColorMap(true);
+
+    this.blankTexture = new pc.Texture(this.device, {
+      name: 'Blank Texture',
+      format: pc.PIXELFORMAT_RGBA8,
+      minFilter: pc.FILTER_LINEAR,
+      magFilter: pc.FILTER_LINEAR,
+      addressU: pc.ADDRESS_CLAMP_TO_EDGE,
+      addressV: pc.ADDRESS_CLAMP_TO_EDGE,
+      width: 1,
+      height: 1,
+      mipmaps: false,
+      levels: [new Uint8Array([0, 0, 0, 0])],
+    });
 
     this.firstBlurShader = pc.createShaderFromCode(
-      device,
+      this.device,
       pc.PostEffect.quadVertexShader,
       FRAGMENT_SHADER.split('uTexture')
         .join('uSceneColorMap')
@@ -65,7 +89,7 @@ export class Blur extends RefCounter {
     );
 
     this.loopBlurShader = pc.createShaderFromCode(
-      device,
+      this.device,
       pc.PostEffect.quadVertexShader,
       FRAGMENT_SHADER,
       'LoopBlurShader',
@@ -82,6 +106,8 @@ export class Blur extends RefCounter {
         depth: false,
       });
     }
+
+    this.app.on('update', this.render, this);
   }
 
   public destroy() {
@@ -91,6 +117,8 @@ export class Blur extends RefCounter {
     this.loopBlurShader.destroy();
 
     this.destroyRenderTargets();
+
+    this.app.off('update', this.render, this);
   }
 
   public setIterations(iterations: number) {
@@ -99,25 +127,20 @@ export class Blur extends RefCounter {
 
   public setRadiusFactor(factor: number) {
     this.factor = factor;
-
-    // if factor = 0, then the collor buffer has to be full black and transparent
-    if (factor === 0) {
-      const texture =
-        this.blurRenderTargets[(Math.floor(this.iterations) + 1) % 2]
-          .colorBuffer;
-
-      const pixels = texture.lock();
-      pixels.fill(0);
-      texture.unlock();
-    }
   }
 
   public getBlurTexture() {
-    return this.blurRenderTargets[(Math.floor(this.iterations) + 1) % 2]
-      .colorBuffer;
+    return this.factor > 0
+      ? this.blurRenderTargets[(Math.floor(this.iterations) + 1) % 2]
+          .colorBuffer
+      : this.blankTexture;
   }
 
   public render() {
+    if (this.isFree() && this.factor > 0) {
+      return;
+    }
+
     this.resize();
 
     const device = this.device;
@@ -127,10 +150,11 @@ export class Blur extends RefCounter {
     scope.resolve('uPixelSize').setValue([1 / this.width, 1 / this.height]);
     const directionHandler = scope.resolve('uDirection');
     const textureHandler = scope.resolve('uTexture');
+    const alphaHandler = scope.resolve('uAlpha');
     const iterations = Math.floor(this.iterations);
 
-    for (let i = 0; i < this.iterations; i++) {
-      let radius = (this.iterations - i) * this.factor;
+    for (let i = 0; i < iterations; i++) {
+      let radius = (iterations - i) * this.factor;
 
       if (i === 0) {
         directionHandler.setValue([radius, 0]);
@@ -145,6 +169,9 @@ export class Blur extends RefCounter {
 
         directionHandler.setValue(direction);
         textureHandler.setValue(texture);
+
+        // TODO: make something smarter, don't use magic variable 2
+        alphaHandler.setValue(Math.min(this.factor * this.factor * 2, 1));
 
         pc.drawQuadWithShader(
           device,
@@ -187,6 +214,8 @@ export class Blur extends RefCounter {
         depth: false,
       });
     }
+
+    this.fire(RESIZE_EVENT);
   }
 
   private destroyRenderTargets() {
